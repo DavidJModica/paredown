@@ -2,7 +2,7 @@
     /**
      * Plugin Name: Tag Pare Down
      * Plugin URl: DavidModica.net
-     * Description: Merges tags and optionally deletes redundant ones
+     * Description: Merges tags and optionally deletes redundant ones. Example -  wp paredown tagparedown 'elon' 'elonmusk' 'delete'
      * Author: David
      * Version: 1.0.0
      * Author URL: DavidModica.net
@@ -17,12 +17,12 @@
      * <source_tag>
      * : The name of the tag to migrate from.
      * 
-     * <remove_old>
+     * <remove_old>(optional)
      * : Deletes the source_tag if set to 'delete' otherwise leaves the source_tag
      *
      * ## EXAMPLES
      *
-     *     wp paredown elon elonmusk delete
+     *     wp paredown tagparedown 'elon' 'elonmusk' 'delete'
      *
      * @when after_wp_load
      */
@@ -32,10 +32,12 @@ if(defined('WP_CLI') && WP_CLI)
    {
         function tagparedown($args, $assoc_args)
         {
+            //Setting up our variables
             $new_tag = $args[0];
             $source_tag = $args[1];
             $remove_old = $args[2];
             
+            //If we do not recieve both tags we stop here
             if(!$new_tag)
             {
                 WP_CLI::log('Missing new_tag - Usage: wp paredown tagparedown new_tag source_tag [remove_old]');
@@ -47,8 +49,7 @@ if(defined('WP_CLI') && WP_CLI)
                 return;
             }
             
-            $new_tag_obj = get_term_by('name', $source_tag, 'post_tag');
-            $source_tag_obj = get_term_by('name', $source_tag, 'post_tag');
+            //$new_tag_obj = get_term_by('name', $source_tag, 'post_tag');
             /*if(!$source_tag_obj)
             {
                /WP_CLI::log('Could not find '.$new_tag.' in the list of tags.');
@@ -58,17 +59,25 @@ if(defined('WP_CLI') && WP_CLI)
                // WP_CLI::log('Could not find '.$source_tag.' in the list of tags.');
             }
             */
-            $new_tag_id = $new_tag_obj->term_id;
+            //$new_tag_id = $new_tag_obj->term_id;
+
+            //We want the source tag as an id for query
+            $source_tag_obj = get_term_by('name', $source_tag, 'post_tag');
             $source_tag_id = $source_tag_obj->term_id;
+
+            //If the source tag does not exist we have nothing to do
             if($source_tag_id == '')
             {
                 WP_CLI::log('Could not find '.$source_tag.' in the list of tags.');
                 return;
             }
+            
+            //Find our posts using the source tag id
             $query = new WP_Query(['tag_id' => $source_tag_id]);
             //$posts = $query->posts;
+
+            //Keeping track of number of posts and errors
             $num_posts = $query->found_posts;
-            //WP_CLI::log('Source tag ID = ' . $source_tag_id);
             WP_CLI::log('Found ' . $num_posts . ' posts with tag ' . $source_tag);
             $err_posts = 0;
             /*
@@ -79,16 +88,16 @@ if(defined('WP_CLI') && WP_CLI)
             }
             */
             //$progress = \WP_CLI\Utils\make_progress_bar( 'Tagging Posts', $num_posts );
+
+            //Loop through posts in query, add new tag if able
             if ($query->have_posts()) {
                 while ($query->have_posts()) {
                     $query->the_post();
                     try
                 {
                     $post_id = get_the_ID();
-                    
                     wp_add_post_tags($post_id , $new_tag);
                     WP_CLI::log('Added tag '. $new_tag . ' to post ' . get_the_title());
-                    
                     //$progress->tick();
                 }
                 catch(exception $e)
@@ -101,11 +110,13 @@ if(defined('WP_CLI') && WP_CLI)
             }
            
             //$progress->finish();
+            //If 'delete' we remove the source tag
             if($remove_old == 'delete')
             {
                 $remove_err = false;
                 try
                 {
+                    //Confirm with user before delete
                     WP_CLI::confirm('Are you sure you want to delete '.$source_tag, $assoc_args);
                     wp_delete_term($source_tag_id, 'post_tag');
                     WP_CLI::log('Deleted tag '.$source_tag);
@@ -117,6 +128,7 @@ if(defined('WP_CLI') && WP_CLI)
                     WP_CLI::log('Could not deleted tag '.$source_tag);                }
             }
 
+            //Print results
             $return_string = "Finished Paredown. "; 
             $return_string.=$num_posts ? "Successfully updated $num_posts posts. " : '';
             $return_string.=$err_posts ? "Failed to update $err_posts posts. " : '';
