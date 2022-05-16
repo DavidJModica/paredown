@@ -85,8 +85,10 @@ if(defined('WP_CLI') && WP_CLI)
                     try
                 {
                     $post_id = get_the_ID();
+                    
                     wp_add_post_tags($post_id , $new_tag);
                     WP_CLI::log('Added tag '. $new_tag . ' to post ' . get_the_title());
+                    
                     //$progress->tick();
                 }
                 catch(exception $e)
