@@ -86,7 +86,7 @@ if(defined('WP_CLI') && WP_CLI)
                     {
                         $num_posts--;
                         $err_posts++;
-                        WP_CLI::log("Could not add '$new_tag' to post '$post_id'");
+                        WP_CLI::log("Could not add '$new_tag' to post '$post_title'");
                     }
                 }
             }
